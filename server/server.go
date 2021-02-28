@@ -14,7 +14,7 @@ var EndDate string
 var Limit int
 
 // Struct for storing json data about a country
-type RestCountries struct {
+type Countries struct {
 	Name     string `json:"name"`
 	Currency []struct {
 		Code string `json:"code"`
@@ -23,9 +23,9 @@ type RestCountries struct {
 }
 
 // Struct for storing json data about bordering countries
-type BorderRestCountriesAPI struct {
-	Code string  `json:"code"`
-	Rate float64 `json:"rate"`
+type BorderCountries struct {
+	Rates map[string]interface{} `json:"rates"`
+	Base  string                 `json:"base"`
 }
 
 // Struct for storing json data about exchange rates
@@ -36,6 +36,13 @@ type ExchangeRates struct {
 	EndAt   string                 `json:"end_at"`
 }
 
+// Struct for storing json data about border countries exchange rates
+type BorderExchangeRates struct {
+	Rates map[string]interface{} `json:"rates"`
+	Names string                 `json:"name"`
+	Base  string                 `json:"base"`
+}
+
 // Function handler for endpoint one
 func ExchangeHistoryHandler(w http.ResponseWriter, r *http.Request) {
 	reqURL := strings.Split(r.URL.String(), "/")
@@ -43,14 +50,14 @@ func ExchangeHistoryHandler(w http.ResponseWriter, r *http.Request) {
 	reqCountry := reqURL[4]
 
 	if historyDataValidation(reqURL, reqDates, w) {
-		countriesURL := "https://restcountries.eu/rest/v2/name/" + reqCountry
+		countryURL := "https://restcountries.eu/rest/v2/name/" + reqCountry
 
-		getCountries, err := http.Get(countriesURL)
+		getCountries, err := http.Get(countryURL)
 		if err != nil {
 			fmt.Println("HTTP request failed with error #{err}")
 		}
 
-		var userCountry []RestCountries
+		var userCountry []Countries
 		err = json.NewDecoder(getCountries.Body).Decode(&userCountry)
 		if err != nil {
 			fmt.Println("Error decoding json data - #{err}")
@@ -99,20 +106,34 @@ func ExchangeBorderHandler(w http.ResponseWriter, r *http.Request) {
 	reqCountry := reqURL[4]
 
 	if borderDataValidation(reqURL, w) {
-		countriesURL := "https://restcountries.eu/rest/v2/name/" + reqCountry
+		countryURL := "https://restcountries.eu/rest/v2/name/" + reqCountry
 
-		getCountries, err := http.Get(countriesURL)
+		getCountries, err := http.Get(countryURL)
 		if err != nil {
 			fmt.Println("HTTP request failed with error #{err}")
 		}
 
-		var userCountry []RestCountries
+		var userCountry []Countries
 		err = json.NewDecoder(getCountries.Body).Decode(&userCountry)
 		if err != nil {
 			fmt.Println("Error decoding json data - #{err}")
 		}
 
+		borderLimitValidation(reqLimit, userCountry)
 
+		var borderCountries BorderCountries
+		borderCountries.Rates = make(map[string]interface{})
+
+		borderCountries = generateBorderData(borderCountries, userCountry, w)
+
+		output, err := json.Marshal(borderCountries)
+		if err != nil {
+			w.WriteHeader(http.StatusInternalServerError)
+			w.Write([]byte(err.Error()))
+		}
+		w.Header().Add("content-type", "application/json")
+		w.WriteHeader(http.StatusOK)
+		w.Write(output)
 	}
 }
 
@@ -152,6 +173,70 @@ func borderDataValidation(reqURL []string, w http.ResponseWriter) bool {
 	fmt.Fprintf(w, "The endpoint format is incorrect, please use the following format:\n\n")
 	fmt.Fprintf(w, "\texchange/v1/exchangeborder/<countryname>?limit=<numberofcountries>")
 	return false
+}
+
+func borderLimitValidation(limit []string, reqCountry []Countries) {
+	var err error
+
+	if len(limit) > 1 {
+		Limit, err = strconv.Atoi(limit[1])
+		if err != nil {
+			fmt.Printf("Failed to convert from string to int, with error #{err}")
+		}
+	} else {
+		Limit = len(reqCountry[0].Border)
+	}
+
+	// If user input limit higher than actual border count, set to border count
+	if Limit > len(reqCountry[0].Border) {
+		Limit = len(reqCountry[0].Border)
+	}
+}
+
+func generateBorderData(borderCountries BorderCountries, countries []Countries, w http.ResponseWriter) BorderCountries {
+	for i := 0; i < Limit; i++ {
+
+		borderCountriesURL := "https://restcountries.eu/rest/v2/alpha/" + countries[0].Border[i]
+		getBorder, err := http.Get(borderCountriesURL)
+		if err != nil {
+			fmt.Printf("The HTTP request failed with error #{err}")
+		}
+
+		var borderCountry Countries
+		err = json.NewDecoder(getBorder.Body).Decode(&borderCountry)
+		if err != nil {
+			fmt.Println("Error decoding json data - #{err}")
+		}
+
+		borderName := borderCountry.Name
+
+		exchangeURL := "https://api.exchangeratesapi.io/latest?base=" + countries[0].Currency[0].Code
+		getExchange, err := http.Get(exchangeURL)
+		if err != nil {
+			fmt.Println("HTTP request failed with error #{err}")
+		}
+
+		var userBase BorderExchangeRates
+		err = json.NewDecoder(getExchange.Body).Decode(&userBase)
+		if err != nil {
+			fmt.Println("Error decoding json data - #{err}")
+		}
+
+		tempCountry := make(map[string]interface{})
+		tempCountry["rate"] = userBase.Rates[borderCountry.Currency[0].Code]
+		tempCountry["currency"] = borderCountry.Currency[0].Code
+
+		borderCountries.Base = countries[0].Currency[0].Code
+
+		if tempCountry["currency"] == borderCountries.Base {
+			tempCountry["rate"] = 1
+		}
+
+		if tempCountry["rate"] != nil {
+			borderCountries.Rates[borderName] = tempCountry
+		}
+	}
+	return borderCountries
 }
 
 
