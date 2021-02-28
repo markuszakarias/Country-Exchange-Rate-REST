@@ -1,4 +1,4 @@
-package assignment_1
+package main
 
 import (
 	"log"
@@ -11,13 +11,13 @@ func main() {
 	port := os.Getenv("PORT")
 
 	if port == "" {
-		log.Fatal("PORT must be set")
+		port = "8080"
 	}
 
-	var rootPath string = "/exchange/v1"
+	var rootPath string = "/exchange/v1/"
 
-	http.HandleFunc(rootPath+"exchangehistory", server.ExchangeHistory)
-	http.HandleFunc(rootPath+"exchangeborder", server.ExchangeBorder)
-	http.HandleFunc(rootPath+"diag", server.Diag)
+	http.HandleFunc(rootPath+"exchangehistory/", server.ExchangeHistoryHandler)
+	http.HandleFunc(rootPath+"exchangeborder/", server.ExchangeBorderHandler)
+	//http.HandleFunc(rootPath+"diag/", server.Diag)
 	log.Fatal(http.ListenAndServe(":"+port, nil))
 }
