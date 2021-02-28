@@ -30,10 +30,10 @@ A RESTapi project for the PROG2005 Cloud Technologies course. This README will p
     - Optional input values are marked in the URL's provided with {value}
 
     - You can find the exchange rate history of a given country in a given period of time:
-    http://localhost:8080/exchange/v1/exchangehistory/<:country>/<:startyyyy>-<:startmm>-<:startdd>-<:endyyyy>-<:endmm>-<:enddd>
+    http://localhost:8080/exchange/v1/exchangehistory/{:country}/{:startyyyy}-{:startmm}-{:startdd}-{:endyyyy}-{:endmm}-{:enddd}
     
     - You can find bordering countries and information regarding their exchange rates:
-    http://localhost:8080/exchange/v1/exchangeborder/<:countryname>?limit=<numberofcountries>
+    http://localhost:8080/exchange/v1/exchangeborder/{:countryname}?limit={numberofcountries}
 
     - You can run the diagnostics tool to get the current status of the API's this API relies on:
     http://localhost:8080/exchange/v1/diag/
