@@ -26,8 +26,8 @@ A RESTapi project for the PROG2005 Cloud Technologies course. This README will p
 
 - The program offers three services:
     - The output will allways be in JSON format
-    - Mandatory input values are marked in the URL's provided with {<:value>}
-    - Optional input values are marked in the URL's provided with {<value>}
+    - Mandatory input values are marked in the URL's provided with {:value}
+    - Optional input values are marked in the URL's provided with {value}
 
     - You can find the exchange rate history of a given country in a given period of time:
     http://localhost:8080/exchange/v1/exchangehistory/<:country>/<:startyyyy>-<:startmm>-<:startdd>-<:endyyyy>-<:endmm>-<:enddd>
