@@ -6,9 +6,12 @@ import (
 	"net/http"
 	"strconv"
 	"strings"
+	"time"
 )
 
 // Global variables
+var Version string = "v2"
+var StartTime time.Time
 var StartDate string
 var EndDate string
 var Limit int
@@ -41,6 +44,14 @@ type BorderExchangeRates struct {
 	Rates map[string]interface{} `json:"rates"`
 	Names string                 `json:"name"`
 	Base  string                 `json:"base"`
+}
+
+// Struct for storing json data about diagnostics
+type Diagnostics struct {
+	StatusExhangeRatesAPI int     `json:"exchangeratesapi"`
+	StatusRestCountries   int     `json:"restcountries"`
+	Version               string  `json:"version"`
+	Uptime                float64 `json:"uptime"`
 }
 
 // Function handler for endpoint one
@@ -100,6 +111,7 @@ func ExchangeHistoryHandler(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
+// Function handler for endpoint two
 func ExchangeBorderHandler(w http.ResponseWriter, r *http.Request) {
 	reqURL := strings.Split(r.URL.String(), "/")
 	reqLimit := strings.Split(r.URL.String(), "=")
@@ -135,6 +147,30 @@ func ExchangeBorderHandler(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusOK)
 		w.Write(output)
 	}
+}
+
+// Function handler for endpoint three
+func DiagHandler(w http.ResponseWriter, r *http.Request) {
+	countriesAPI := countriesAPIStatus(r)
+	exchangeAPI := exchangeAPIStatus(r)
+
+	var diagnostics Diagnostics
+
+	diagnostics.StatusRestCountries = countriesAPI.StatusCode
+	diagnostics.StatusExhangeRatesAPI = exchangeAPI.StatusCode
+	diagnostics.Version = Version
+
+	secs := time.Since(StartTime).Seconds()
+	diagnostics.Uptime = secs
+
+	output, err := json.Marshal(diagnostics)
+	if err != nil {
+		w.WriteHeader(http.StatusInternalServerError)
+		w.Write([]byte(err.Error()))
+	}
+	w.Header().Add("content-type", "application/json")
+	w.WriteHeader(http.StatusOK)
+	w.Write(output)
 }
 
 func historyDataValidation(reqURL []string, reqDates []string, w http.ResponseWriter) bool {
@@ -237,6 +273,44 @@ func generateBorderData(borderCountries BorderCountries, countries []Countries, 
 		}
 	}
 	return borderCountries
+}
+
+func countriesAPIStatus(r *http.Request) *http.Response {
+	url := "https://restcountries.eu/rest/v2/all?fields=name"
+
+	r, err := http.NewRequest(http.MethodGet, url, nil)
+	if err != nil {
+		fmt.Println("HTTP request failed with error #{err}")
+	}
+
+	// Setting content type
+	r.Header.Add("content-type", "application/json")
+
+	client := &http.Client{}
+	res, err := client.Do(r)
+	if err != nil {
+		fmt.Println("HTTP request failed with error #{err}")
+	}
+	return res
+}
+
+func exchangeAPIStatus(r *http.Request) *http.Response {
+	url := "https://api.exchangeratesapi.io/history?start_at=2020-01-01&end_at=2020-02-01&symbols=NOK"
+
+	r, err := http.NewRequest(http.MethodGet, url, nil)
+	if err != nil {
+		fmt.Println("HTTP request failed with error #{err}")
+	}
+
+	// Setting content type
+	r.Header.Add("content-type", "application/json")
+
+	client := &http.Client{}
+	res, err := client.Do(r)
+	if err != nil {
+		fmt.Println("HTTP request failed with error #{err}")
+	}
+	return res
 }
 
 

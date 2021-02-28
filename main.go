@@ -18,6 +18,6 @@ func main() {
 
 	http.HandleFunc(rootPath+"exchangehistory/", server.ExchangeHistoryHandler)
 	http.HandleFunc(rootPath+"exchangeborder/", server.ExchangeBorderHandler)
-	//http.HandleFunc(rootPath+"diag/", server.Diag)
+	http.HandleFunc(rootPath+"diag/", server.DiagHandler)
 	log.Fatal(http.ListenAndServe(":"+port, nil))
 }
